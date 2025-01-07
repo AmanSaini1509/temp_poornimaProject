@@ -60,9 +60,20 @@ export const getMessages = async (userId) => {
 // Logout API
 export const logout = async () => {
   try {
-    await AsyncStorage.removeItem('authToken'); // Clear token from storage
-    await AsyncStorage.removeItem('userRole');  // Clear role from storage
+    const userId = await AsyncStorage.getItem('userId'); // Fetch user ID from storage
+    if (!userId) throw new Error('User ID not found');
+
+    // Call the backend logout API
+    const response = await api.post('/auth/logout', { userId });
+
+    if (response.status === 200) {
+      await AsyncStorage.removeItem('authToken'); // Clear auth token
+      await AsyncStorage.removeItem('userId');    // Clear user ID
+    } else {
+      throw new Error('Logout failed');
+    }
   } catch (error) {
-    throw new Error('Failed to logout');
+    console.error('Logout error:', error.message);
+    Alert.alert('Error', error.message);
   }
 };

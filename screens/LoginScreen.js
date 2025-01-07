@@ -31,11 +31,10 @@ const LoginScreen = ({ navigation }) => {
       await AsyncStorage.setItem('userRole', role);
       await AsyncStorage.setItem('userId', _id);
       await AsyncStorage.setItem('userName', username);
-  
+      navigation.navigate('Home');
       Alert.alert('Success', 'Logged in successfully');
   
       // Navigate to the authenticated flow
-      navigation.navigate('DrawerNavigator'); // Ensure this matches the route name in AppNavigator
     } catch (error) {
       Alert.alert('Error', error.message || 'Invalid credentials');
     } finally {

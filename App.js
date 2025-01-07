@@ -9,6 +9,7 @@ import { Ionicons, MaterialIcons } from 'react-native-vector-icons';
 import LoginScreen from './screens/LoginScreen';
 import MessagesScreen from './screens/MessagesScreen';
 import MeetingsScreen from './screens/MeetingsScreen';
+import { logout } from './services/api';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -22,69 +23,87 @@ const Loader = () => (
 
 const AppTabs = () => (
   <Tab.Navigator>
-    <Tab.Screen name="Meetings" component={MeetingsScreen} options={{
-    headerShown: false,
-    tabBarIcon: ({ color, size }) => (
-      <MaterialIcons name="event" size={size} color={color} />
-    ),
-  }} />
-    <Tab.Screen name="Messages" component={MessagesScreen} options={{
-    headerShown: false,
-    tabBarIcon: ({ color, size }) => (
-      <MaterialIcons name="chat" size={size} color={color} />
-    ),
-  }} />
+    <Tab.Screen
+      name="Meetings"
+      component={MeetingsScreen}
+      options={{
+        headerShown: false,
+        tabBarIcon: ({ color, size }) => (
+          <MaterialIcons name="event" size={size} color={color} />
+        ),
+      }}
+    />
+    <Tab.Screen
+      name="Messages"
+      component={MessagesScreen}
+      options={{
+        headerShown: false,
+        tabBarIcon: ({ color, size }) => (
+          <MaterialIcons name="chat" size={size} color={color} />
+        ),
+      }}
+    />
   </Tab.Navigator>
 );
 
 const fetchUserName = async () => {
-  const userName = await AsyncStorage.getItem('userName')
-  Alert.alert('Welcome! ', userName)
-}
+  const userName = await AsyncStorage.getItem('userName');
+  Alert.alert('Welcome! ', userName);
+};
+
 const ProfileScreen = () => (
   <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
     <Button title="Profile Screen" onPress={() => fetchUserName()} />
   </View>
 );
 
-const Logout = ({ navigation }) => {
+const DrawerNavigator = ({ navigation }) => {
   const handleLogout = async () => {
     try {
-      await AsyncStorage.clear();
-      navigation.navigate('login');
+      await logout(); // Call the logout function
+      navigation.navigate('LoginScreen');
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('Failed to logout:', error.message);
     }
   };
 
-  useEffect(() => {
-    handleLogout();
-  }, []);
-
-  return null;
+  return (
+    <Drawer.Navigator initialRouteName="Home">
+      <Drawer.Screen
+        name="Home"
+        component={AppTabs}
+        options={{
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="home" size={size} color={color} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          drawerIcon: ({ color, size }) => (
+            <MaterialIcons name="account-circle" size={size} color={color} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="Logout"
+        component={() => null} // Render nothing
+        options={{
+          drawerLabel: () => (
+            <Button title="Logout" onPress={handleLogout} color="#d9534f" />
+          ),
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="exit" size={size} color={color} />
+          ),
+        }}
+      />
+    </Drawer.Navigator>
+  );
 };
 
-const DrawerNavigator = () => (
-  <Drawer.Navigator initialRouteName="Home">
-    <Drawer.Screen name="Home" component={AppTabs} options={{
-        drawerIcon: ({ color, size }) => (
-          <Ionicons name="home" size={size} color={color} />
-        ),
-      }} />
-    <Drawer.Screen name="Profile" component={ProfileScreen} options={{
-        drawerIcon: ({ color, size }) => (
-          <MaterialIcons name="account-circle" size={size} color={color} />
-        ),
-      }}/>
-    <Drawer.Screen name="Logout" component={LoginScreen} options={{
-        drawerIcon: ({ color, size }) => (
-          <Ionicons name="exit" size={size} color={color} />
-        ),
-      }}/>
-  </Drawer.Navigator>
-);
-
-const AppNavigator = () => {
+const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(null);
 
   useEffect(() => {
@@ -106,21 +125,16 @@ const AppNavigator = () => {
   }
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {isAuthenticated ? (
-        <Stack.Screen name="DrawerNavigator" component={DrawerNavigator} />
-      ) : (
-        <Stack.Screen name="Login" component={LoginScreen} />
-      )}
-    </Stack.Navigator>
+    <NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {isAuthenticated ? (
+          <Stack.Screen name="Home" component={DrawerNavigator} /> // Use 'Home' instead of 'DrawerNavigator'
+        ) : (
+          <Stack.Screen name="LoginScreen" component={LoginScreen} />
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 };
-
-
-const App = () => (
-  <NavigationContainer>
-    <AppNavigator />
-  </NavigationContainer>
-);
 
 export default App;
