@@ -1,140 +1,126 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, View, Button, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createDrawerNavigator } from '@react-navigation/drawer';
+import { Ionicons, MaterialIcons } from 'react-native-vector-icons';
+import LoginScreen from './screens/LoginScreen';
+import MessagesScreen from './screens/MessagesScreen';
+import MeetingsScreen from './screens/MeetingsScreen';
 
-const LoginScreen = ({ navigation }) => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+const Stack = createStackNavigator();
+const Tab = createBottomTabNavigator();
+const Drawer = createDrawerNavigator();
 
-  const handleLogin = async () => {
-    if (!username || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
-  
+const Loader = () => (
+  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+    <ActivityIndicator size="large" color="#007bff" />
+  </View>
+);
+
+const AppTabs = () => (
+  <Tab.Navigator>
+    <Tab.Screen name="Meetings" component={MeetingsScreen} options={{
+    headerShown: false,
+    tabBarIcon: ({ color, size }) => (
+      <MaterialIcons name="event" size={size} color={color} />
+    ),
+  }} />
+    <Tab.Screen name="Messages" component={MessagesScreen} options={{
+    headerShown: false,
+    tabBarIcon: ({ color, size }) => (
+      <MaterialIcons name="chat" size={size} color={color} />
+    ),
+  }} />
+  </Tab.Navigator>
+);
+
+const fetchUserName = async () => {
+  const userName = await AsyncStorage.getItem('userName')
+  Alert.alert('Welcome! ', userName)
+}
+const ProfileScreen = () => (
+  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+    <Button title="Profile Screen" onPress={() => fetchUserName()} />
+  </View>
+);
+
+const Logout = ({ navigation }) => {
+  const handleLogout = async () => {
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 5-second timeout
-  
-      const response = await fetch('http://192.168.80.231:3000/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password }),
-        signal: controller.signal,
-      });
-  
-      clearTimeout(timeoutId);
-  
-      const data = await response.json();
-      if (response.ok) {
-        await AsyncStorage.setItem('authToken', data.token);
-        await AsyncStorage.setItem('userRole', data.role);
-  
-        Alert.alert('Success', 'Logged in successfully');
-      } else {
-        Alert.alert('Error', data.message || 'Invalid credentials');
-      }
+      await AsyncStorage.clear();
+      navigation.navigate('login');
     } catch (error) {
-      console.log(error);
-      if (error.name === 'AbortError') {
-        Alert.alert('Error', 'Request timed out');
-      } else {
-        Alert.alert('Error', 'Unable to connect to the server');
-      }
+      console.error('Logout error:', error);
     }
   };
 
-  const handleRequestAccess = () => {
-    Alert.alert('Request Access', 'Redirecting to the request access screen');
-  };
+  useEffect(() => {
+    handleLogout();
+  }, []);
+
+  return null;
+};
+
+const DrawerNavigator = () => (
+  <Drawer.Navigator initialRouteName="Home">
+    <Drawer.Screen name="Home" component={AppTabs} options={{
+        drawerIcon: ({ color, size }) => (
+          <Ionicons name="home" size={size} color={color} />
+        ),
+      }} />
+    <Drawer.Screen name="Profile" component={ProfileScreen} options={{
+        drawerIcon: ({ color, size }) => (
+          <MaterialIcons name="account-circle" size={size} color={color} />
+        ),
+      }}/>
+    <Drawer.Screen name="Logout" component={LoginScreen} options={{
+        drawerIcon: ({ color, size }) => (
+          <Ionicons name="exit" size={size} color={color} />
+        ),
+      }}/>
+  </Drawer.Navigator>
+);
+
+const AppNavigator = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(null);
+
+  useEffect(() => {
+    const checkLoginStatus = async () => {
+      try {
+        const token = await AsyncStorage.getItem('authToken');
+        setIsAuthenticated(!!token);
+      } catch (error) {
+        console.error('Failed to check login status:', error);
+        setIsAuthenticated(false);
+      }
+    };
+
+    checkLoginStatus();
+  }, []);
+
+  if (isAuthenticated === null) {
+    return <Loader />;
+  }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Login</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Username"
-        placeholderTextColor="#888"
-        value={username}
-        onChangeText={setUsername}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        secureTextEntry
-        onChangeText={setPassword}
-        placeholderTextColor="#ccc"
-      />
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>Login</Text>
-      </TouchableOpacity>
-      <Text style={styles.footerText}>
-        If unable to log in, then please{' '}
-        <TouchableOpacity onPress={handleRequestAccess}>
-          <Text style={styles.requestAccess}>Request Access</Text>
-        </TouchableOpacity>
-      </Text>
-    </View>
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      {isAuthenticated ? (
+        <Stack.Screen name="DrawerNavigator" component={DrawerNavigator} />
+      ) : (
+        <Stack.Screen name="Login" component={LoginScreen} />
+      )}
+    </Stack.Navigator>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  input: {
-    width: '80%',
-    height: 50,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    marginBottom: 15,
-    backgroundColor: '#fff',
-  },
-  button: {
-    width: '80%',
-    height: 50,
-    backgroundColor: '#007bff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 8,
-    marginTop: 20,
-  },
-  buttonText: {
-    color: '#ffffff',
-    fontSize: 18,
-  },
-  footerText: {
-    marginTop: 20,
-    color: '#666',
-    fontSize: 14,
-    textAlign: 'center'
-  },
-  requestAccess: {
-    
-    color: '#007bff',
-    textDecorationLine: 'underline',
-    fontSize: 14
-  },
-});
 
-export default LoginScreen;
+const App = () => (
+  <NavigationContainer>
+    <AppNavigator />
+  </NavigationContainer>
+);
+
+export default App;
