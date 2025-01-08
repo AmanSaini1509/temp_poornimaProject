@@ -67,8 +67,7 @@ export const logout = async () => {
     const response = await api.post('/auth/logout', { userId });
 
     if (response.status === 200) {
-      await AsyncStorage.removeItem('authToken'); // Clear auth token
-      await AsyncStorage.removeItem('userId');    // Clear user ID
+      await AsyncStorage.clear();
     } else {
       throw new Error('Logout failed');
     }
